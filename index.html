@@ -92,6 +92,7 @@ h1 {
   padding: 18px;
   box-shadow: 0 6px 28px rgba(0,0,0,0.45);
   transition: box-shadow 0.3s;
+  overflow: hidden;
 }
 
 .panel-card:hover {
@@ -138,6 +139,7 @@ h1 {
   background: #2a2218; padding: 10px; border-radius: 12px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 20px rgba(0,0,0,0.4);
   position: relative;
+  overflow: hidden;
 }
 
 .panel-right .canvas-wrap {
@@ -146,7 +148,7 @@ h1 {
 
 .canvas-wrap canvas {
   display: block; border-radius: 6px; cursor: crosshair;
-  width: 100%; height: auto;
+  max-width: 100%; height: auto;
 }
 
 @media (max-width: 960px) {
@@ -379,7 +381,7 @@ function render() {
     c.width = pw * dpr;
     c.height = ph * dpr;
     c.style.width = pw + 'px';
-    c.style.height = ph + 'px';
+    c.style.height = 'auto';
   });
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   physCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -416,10 +418,13 @@ function render() {
 // ============================================================
 function handleCanvasHover(e, targetCanvas, targetCtx, snap) {
   if (!currentPattern) return;
+  const N = parseInt(gridSizeInput.value);
   const S = parseInt(cellSizeInput.value);
   const rect = targetCanvas.getBoundingClientRect();
-  const col = Math.floor((e.clientX - rect.left) / S);
-  const row = Math.floor((e.clientY - rect.top) / S);
+  // Account for CSS scaling (max-width:100% may shrink display vs natural size)
+  const scale = (N * S) / rect.width;
+  const col = Math.floor((e.clientX - rect.left) / S * scale);
+  const row = Math.floor((e.clientY - rect.top) / S * scale);
   const info = getCellInfo(currentPattern, row, col);
 
   if (!info) {
