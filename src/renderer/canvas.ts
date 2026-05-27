@@ -156,8 +156,6 @@ export function renderPhysicalWeave(
   ctx.fillStyle = '#15100b';
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-  const shadowLen = Math.min(G * 1.5 + 2, 12);
-
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const v = pattern[r]![c]!;
@@ -165,57 +163,79 @@ export function renderPhysicalWeave(
       const y = r * S;
 
       if (v === 1) {
-        // ── 横条在上 ──
-        ctx.fillStyle = FC;
+        // ════════ 横条在上（纬浮）════════
+
+        // ── Gap 透光：缝隙处隐约透出下方竖条的暗影 ──
+        ctx.globalAlpha = 0.12 * Math.sqrt(SD);
+        ctx.fillStyle = WC;
+        ctx.fillRect(x, y, S, G / 2);
+        ctx.fillRect(x, y + S - G / 2, S, G / 2);
+        ctx.globalAlpha = 1;
+
+        // ── 暗-亮-暗 竹篾弧度渐变（模拟竹条微鼓的曲面）──
+        const grad = ctx.createLinearGradient(x, y + G / 2, x, y + S - G / 2);
+        grad.addColorStop(0,   '#A8845C');
+        grad.addColorStop(0.2, '#DFC49C');
+        grad.addColorStop(0.5, '#D4B896');
+        grad.addColorStop(0.8, '#DFC49C');
+        grad.addColorStop(1,   '#A8845C');
+
+        // ── shadowBlur 物理压痕阴影（向下方投射到竖条上）──
+        ctx.save();
+        ctx.shadowColor = `rgba(0,0,0,${0.3 + SD * 0.35})`;
+        ctx.shadowBlur  = 4 + SD * 6;
+        ctx.shadowOffsetY = 2 + SD * 3;
+        ctx.fillStyle = grad;
         ctx.fillRect(x, y + G / 2, S, S - G);
+        ctx.restore();
 
-        // 向外物理阴影（上 / 下）
-        if (SD > 0 && shadowLen > 0) {
-          const a = Math.min(SD * 0.5, 0.4);
-          const gT = ctx.createLinearGradient(x, y + G / 2, x, y + G / 2 - shadowLen);
-          gT.addColorStop(0, `rgba(0,0,0,${a})`);
-          gT.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = gT;
-          ctx.fillRect(x, y + G / 2 - shadowLen, S, shadowLen);
-
-          const gB = ctx.createLinearGradient(x, y + S - G / 2, x, y + S - G / 2 + shadowLen);
-          gB.addColorStop(0, `rgba(0,0,0,${a})`);
-          gB.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = gB;
-          ctx.fillRect(x, y + S - G / 2, S, shadowLen);
-        }
-
-        // 竹篾横向纤维
+        // ── 竹篾横向纤维纹理 ──
         if (TX) {
-          ctx.fillStyle = 'rgba(160,130,100,0.06)';
+          ctx.fillStyle = 'rgba(180,150,120,0.07)';
           for (let ly = y + G / 2 + 3; ly < y + S - G / 2 - 2; ly += 2) {
             ctx.fillRect(x + 2, ly, S - 4, 1);
           }
         }
       } else {
-        // ── 竖条在上 ──
-        ctx.fillStyle = WC;
+        // ════════ 竖条在上（经浮）════════
+
+        // ── Gap 透光：缝隙处隐约透出右方横条的暗影 ──
+        ctx.globalAlpha = 0.12 * Math.sqrt(SD);
+        ctx.fillStyle = FC;
+        ctx.fillRect(x, y, G / 2, S);
+        ctx.fillRect(x + S - G / 2, y, G / 2, S);
+        ctx.globalAlpha = 1;
+
+        // ── 暗-亮-暗 竹篾弧度渐变 ──
+        const grad = ctx.createLinearGradient(x + G / 2, y, x + S - G / 2, y);
+        grad.addColorStop(0,   '#92744E');
+        grad.addColorStop(0.2, '#CCB48C');
+        grad.addColorStop(0.5, '#C4A67A');
+        grad.addColorStop(0.8, '#CCB48C');
+        grad.addColorStop(1,   '#92744E');
+
+        // ── shadowBlur 物理压痕阴影（左右双向）──
+        // 向右投射
+        ctx.save();
+        ctx.shadowColor = `rgba(0,0,0,${0.3 + SD * 0.35})`;
+        ctx.shadowBlur  = 4 + SD * 6;
+        ctx.shadowOffsetX = 2 + SD * 3;
+        ctx.fillStyle = grad;
         ctx.fillRect(x + G / 2, y, S - G, S);
+        ctx.restore();
 
-        // 向外物理阴影（左 / 右）
-        if (SD > 0 && shadowLen > 0) {
-          const a = Math.min(SD * 0.5, 0.4);
-          const gL = ctx.createLinearGradient(x + G / 2, y, x + G / 2 - shadowLen, y);
-          gL.addColorStop(0, `rgba(0,0,0,${a})`);
-          gL.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = gL;
-          ctx.fillRect(x + G / 2 - shadowLen, y, shadowLen, S);
+        // 向左投射（二次绘制仅用于阴影，fill 被覆盖无影响）
+        ctx.save();
+        ctx.shadowColor = `rgba(0,0,0,${0.3 + SD * 0.35})`;
+        ctx.shadowBlur  = 4 + SD * 6;
+        ctx.shadowOffsetX = -(2 + SD * 3);
+        ctx.fillStyle = grad;
+        ctx.fillRect(x + G / 2, y, S - G, S);
+        ctx.restore();
 
-          const gR = ctx.createLinearGradient(x + S - G / 2, y, x + S - G / 2 + shadowLen, y);
-          gR.addColorStop(0, `rgba(0,0,0,${a})`);
-          gR.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = gR;
-          ctx.fillRect(x + S - G / 2, y, shadowLen, S);
-        }
-
-        // 竹篾纵向纤维
+        // ── 竹篾纵向纤维纹理 ──
         if (TX) {
-          ctx.fillStyle = 'rgba(140,110,80,0.06)';
+          ctx.fillStyle = 'rgba(150,120,90,0.07)';
           for (let lx = x + G / 2 + 3; lx < x + S - G / 2 - 2; lx += 2) {
             ctx.fillRect(lx, y + 2, 1, S - 4);
           }
