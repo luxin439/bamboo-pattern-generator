@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>竹编图案生成器 — 空间折叠交织渲染</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    background: #1a1a1a; color: #ccc;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px 16px 48px;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 22px; font-weight: 600; margin-bottom: 2px; color: #e8d5b0;
+    letter-spacing: 1px;
+  }
+  .subtitle { color: #777; font-size: 13px; margin-bottom: 18px; }
+
+  /* ---- Pipeline ---- */
+  .pipeline {
+    display: flex; gap: 8px; align-items: center;
+    margin-bottom: 16px; font-size: 11px; color: #555;
+  }
+  .pipeline .step {
+    padding: 3px 10px; border-radius: 4px; background: #242424;
+    transition: 0.25s;
+  }
+  .pipeline .step.active { background: #3a4a3a; color: #9c9; }
+  .pipeline .arrow { color: #444; }
+
+  /* ---- Controls ---- */
+  .controls {
+    background: #242424; border-radius: 12px;
+    padding: 14px 18px; margin-bottom: 18px;
+    display: flex; flex-wrap: wrap; gap: 8px 16px;
+    align-items: center; max-width: 880px; width: 100%;
+  }
+  .ctrl-group {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; color: #aaa;
+  }
+  .ctrl-group label { white-space: nowrap; }
+  .ctrl-group input[type="range"] { width: 72px; vertical-align: middle; }
+  .ctrl-group input[type="number"] {
+    width: 42px; background: #333; border: 1px solid #555;
+    color: #ddd; border-radius: 4px; padding: 2px 4px; font-size: 12px;
+  }
+  .ctrl-group select {
+    background: #333; border: 1px solid #555; color: #ddd;
+    border-radius: 4px; padding: 3px 6px; font-size: 12px;
+  }
+  .ctrl-group input[type="color"] {
+    width: 26px; height: 26px; border: none; border-radius: 4px;
+    cursor: pointer; padding: 0; background: none;
+  }
+  .val { min-width: 22px; text-align: center; font-size: 11px; color: #888; }
+
+  .upload-area { display: flex; align-items: center; gap: 8px; }
+  .upload-btn {
+    background: #3a3228; border: 1px dashed #8a7a5a;
+    color: #e8d5b0; padding: 4px 12px; border-radius: 6px;
+    cursor: pointer; font-size: 12px; transition: 0.2s;
+  }
+  .upload-btn:hover { background: #4a4238; border-color: #c8b890; }
+  .upload-btn input { display: none; }
+  .file-name { font-size: 11px; color: #666; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .action-btn {
+    background: #4a6a4a; border: none; color: #fff;
+    padding: 4px 16px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; transition: 0.2s;
+  }
+  .action-btn:hover { background: #5a7a5a; }
+  .action-btn:active { transform: scale(0.97); }
+
+  /* ---- Canvas ---- */
+  .canvas-wrap {
+    background: #2a2218; padding: 14px; border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    position: relative;
+  }
+  #weaveCanvas { display: block; border-radius: 6px; cursor: crosshair; }
+
+  /* ---- Hover status bar ---- */
+  #hoverStatus {
+    height: 28px; line-height: 28px; font-size: 12px; color: #999;
+    margin-top: 8px; text-align: center;
+    background: #242424; border-radius: 6px; padding: 0 14px;
+    min-width: 200px;
+  }
+  #hoverStatus .highlight { color: #e8d5b0; }
+
+  /* ---- Stats ---- */
+  .stats {
+    display: flex; flex-wrap: wrap; gap: 6px 12px;
+    margin-top: 8px; font-size: 11px; color: #666;
+    max-width: 880px; width: 100%;
+  }
+  .stats span { background: #242424; padding: 2px 8px; border-radius: 4px; }
+
+  @media (max-width: 640px) {
+    .controls { gap: 6px 10px; padding: 10px; }
+    .ctrl-group input[type="range"] { width: 52px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🎋 竹编图案生成器</h1>
+<p class="subtitle">上传图片 → 像素网格化 → 空间折叠交织渲染</p>
+
+<!-- Pipeline -->
+<div class="pipeline" id="pipelineIndicator">
+  <span class="step" data-step="1">① 上传/预设</span>
+  <span class="arrow">→</span>
+  <span class="step" data-step="2">② N×N 像素化</span>
+  <span class="arrow">→</span>
+  <span class="step" data-step="3">③ 经纬交织渲染</span>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <div class="ctrl-group upload-area">
+    <label class="upload-btn">
+      + 上传图片
+      <input type="file" id="fileInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+    </label>
+    <span class="file-name" id="fileName"></span>
+  </div>
+
+  <div class="ctrl-group">
+    <label>预设</label>
+    <select id="patternSelect">
+      <option value="checkerboard">棋盘格</option>
+      <option value="stripes">横条纹</option>
+      <option value="triangle">三角形</option>
+      <option value="diamond">菱形</option>
+      <option value="random" selected>随机</option>
+    </select>
+  </div>
+
+  <div class="ctrl-group">
+    <label>网格</label>
+    <input type="number" id="gridSize" value="12" min="4" max="64" />
+  </div>
+
+  <div class="ctrl-group">
+    <label>阈值</label>
+    <input type="range" id="threshold" min="0" max="255" value="128" />
+    <span class="val" id="thresholdVal">128</span>
+  </div>
+
+  <div class="ctrl-group">
+    <label>格大</label>
+    <input type="number" id="cellSize" value="42" min="16" max="120" />
+  </div>
+
+  <div class="ctrl-group">
+    <label>缝隙</label>
+    <input type="range" id="gap" min="0" max="8" value="2" />
+    <span class="val" id="gapVal">2</span>
+  </div>
+
+  <div class="ctrl-group">
+    <label>阴影</label>
+    <input type="range" id="shadowIntensity" min="0" max="100" value="50" />
+    <span class="val" id="shadowVal">0.50</span>
+  </div>
+
+  <div class="ctrl-group">
+    <label><input type="checkbox" id="textureToggle" checked /> 纹理</label>
+  </div>
+
+  <div class="ctrl-group">
+    <label>经色</label>
+    <input type="color" id="warpColor" value="#E6C594" />
+  </div>
+  <div class="ctrl-group">
+    <label>纬色</label>
+    <input type="color" id="weftColor" value="#D4A574" />
+  </div>
+
+  <button class="action-btn" id="refreshBtn">⟳ 渲染</button>
+</div>
+
+<!-- Canvas -->
+<div class="canvas-wrap">
+  <canvas id="weaveCanvas"></canvas>
+</div>
+
+<!-- Hover status bar -->
+<div id="hoverStatus">将鼠标移至竹编网格上查看交叉点状态</div>
+
+<!-- Stats -->
+<div class="stats" id="stats"></div>
+
+<script type="module">
+import {
+  renderSimpleWeave,
+  imageToPatternMatrix,
+  loadImageFromFile,
+  getCellInfo,
+  drawHoverOverlay,
+} from './src/renderer/canvas.ts';
+
+// ============================================================
+// DOM
+// ============================================================
+const canvas = document.getElementById('weaveCanvas');
+const ctx = canvas.getContext('2d');
+
+const fileInput = document.getElementById('fileInput');
+const fileName = document.getElementById('fileName');
+const patternSelect = document.getElementById('patternSelect');
+const gridSizeInput = document.getElementById('gridSize');
+const thresholdInput = document.getElementById('threshold');
+const thresholdVal = document.getElementById('thresholdVal');
+const cellSizeInput = document.getElementById('cellSize');
+const gapInput = document.getElementById('gap');
+const gapVal = document.getElementById('gapVal');
+const shadowInput = document.getElementById('shadowIntensity');
+const shadowVal = document.getElementById('shadowVal');
+const textureToggle = document.getElementById('textureToggle');
+const warpColorInput = document.getElementById('warpColor');
+const weftColorInput = document.getElementById('weftColor');
+const refreshBtn = document.getElementById('refreshBtn');
+const hoverStatus = document.getElementById('hoverStatus');
+const stats = document.getElementById('stats');
+
+// ============================================================
+// State
+// ============================================================
+let uploadedImage = null;   // HTMLImageElement | null
+let useUpload = false;
+let snapshot = null;        // ImageData for hover redraw cache
+let currentPattern = null;  // last rendered pattern matrix
+let currentOptions = null;  // last render options
+
+// ============================================================
+// Preset generators
+// ============================================================
+function generatePresetPattern(type, size) {
+  const p = Array.from({ length: size }, () => Array(size).fill(0));
+  for (let i = 0; i < size; i++) {
+    for (let j = 0; j < size; j++) {
+      switch (type) {
+        case 'checkerboard': p[i][j] = (i + j) % 2; break;
+        case 'stripes':      p[i][j] = Math.floor(i / 2) % 2; break;
+        case 'triangle':     p[i][j] = j <= i ? 1 : 0; break;
+        case 'diamond': {
+          const cx = (size - 1) / 2, cy = (size - 1) / 2;
+          p[i][j] = Math.abs(i - cx) + Math.abs(j - cy) < size * 0.4 ? 1 : 0;
+          break;
+        }
+        case 'random':       p[i][j] = Math.random() > 0.5 ? 1 : 0; break;
+      }
+    }
+  }
+  return p;
+}
+
+// ============================================================
+// Render pipeline
+// ============================================================
+function render() {
+  const N = parseInt(gridSizeInput.value);
+  const S = parseInt(cellSizeInput.value);
+  const G = parseInt(gapInput.value);
+  const shadow = parseInt(shadowInput.value) / 100;
+  const texture = textureToggle.checked;
+  const warpColor = warpColorInput.value;
+  const weftColor = weftColorInput.value;
+
+  // Step ① & ②: get pattern matrix
+  const pattern = useUpload && uploadedImage
+    ? (updatePipelineStep(2), imageToPatternMatrix(uploadedImage, N, parseInt(thresholdInput.value)))
+    : (updatePipelineStep(1), generatePresetPattern(patternSelect.value, N));
+
+  currentPattern = pattern;
+
+  // Step ③: render
+  updatePipelineStep(3);
+
+  // Canvas sizing
+  const dpr = window.devicePixelRatio || 1;
+  const pw = N * S;
+  const ph = N * S;
+  canvas.width = pw * dpr;
+  canvas.height = ph * dpr;
+  canvas.style.width = pw + 'px';
+  canvas.style.height = ph + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Render weave
+  renderSimpleWeave(ctx, pattern, {
+    cellSize: S, gap: G, shadowIntensity: shadow,
+    showTexture: texture, warpColor, weftColor,
+  });
+
+  // Cache snapshot for hover overlay redraws
+  snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  // Stats
+  const flat = pattern.flat();
+  const ones = flat.filter(v => v === 1).length;
+  const zeros = flat.filter(v => v === 0).length;
+  const src = useUpload && uploadedImage ? '📷 上传图片' : `🎨 ${patternSelect.options[patternSelect.selectedIndex].text}`;
+  stats.innerHTML = `
+    <span>${N}×${N} 网格</span><span>${src}</span>
+    <span>图案(1): ${ones} 格</span><span>背景(0): ${zeros} 格</span>
+  `;
+
+  hoverStatus.innerHTML = '将鼠标移至竹编网格上查看交叉点状态';
+}
+
+// ============================================================
+// Hover interaction (模块 C)
+// ============================================================
+canvas.addEventListener('mousemove', (e) => {
+  if (!currentPattern) return;
+  const S = parseInt(cellSizeInput.value);
+  const rect = canvas.getBoundingClientRect();
+  const col = Math.floor((e.clientX - rect.left) / S);
+  const row = Math.floor((e.clientY - rect.top) / S);
+  const info = getCellInfo(currentPattern, row, col);
+
+  if (!info) {
+    canvas.title = '';
+    return;
+  }
+
+  // Restore cached render from snapshot
+  if (snapshot) {
+    ctx.putImageData(snapshot, 0, 0);
+  }
+
+  // Draw hover overlay
+  drawHoverOverlay(ctx, col, row, S, info);
+
+  // Update status bar
+  const emoji = info.value === 1 ? '▬' : '▎';
+  hoverStatus.innerHTML = `
+    交叉点 [<span class="highlight">${info.row}</span>, <span class="highlight">${info.col}</span>]
+    &nbsp;→&nbsp; ${emoji} <span class="highlight">${info.label}</span>
+  `;
+  canvas.title = `[${row},${col}] ${info.label}`;
+});
+
+canvas.addEventListener('mouseleave', () => {
+  if (snapshot) ctx.putImageData(snapshot, 0, 0);
+  hoverStatus.innerHTML = '将鼠标移至竹编网格上查看交叉点状态';
+  canvas.title = '';
+});
+
+// ============================================================
+// Pipeline UI
+// ============================================================
+function updatePipelineStep(n) {
+  document.querySelectorAll('.pipeline .step').forEach(el =>
+    el.classList.toggle('active', parseInt(el.dataset.step) === n)
+  );
+}
+
+// ============================================================
+// Events
+// ============================================================
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files?.[0];
+  if (!file) return;
+  fileName.textContent = file.name;
+  try {
+    uploadedImage = await loadImageFromFile(file);
+    useUpload = true;
+    updatePipelineStep(1);
+    render();
+  } catch (e) {
+    console.error(e);
+    fileName.textContent = '❌ 加载失败';
+    useUpload = false;
+  }
+});
+
+// Slider value display
+thresholdInput.addEventListener('input', () => { thresholdVal.textContent = thresholdInput.value; });
+gapInput.addEventListener('input', () => { gapVal.textContent = gapInput.value; });
+shadowInput.addEventListener('input', () => { shadowVal.textContent = (parseInt(shadowInput.value) / 100).toFixed(2); });
+
+// Debounced re-render
+let renderTimer;
+function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(render, 80); }
+
+thresholdInput.addEventListener('change', scheduleRender);
+gapInput.addEventListener('change', scheduleRender);
+shadowInput.addEventListener('change', scheduleRender);
+textureToggle.addEventListener('change', render);
+warpColorInput.addEventListener('input', render);
+weftColorInput.addEventListener('input', render);
+patternSelect.addEventListener('change', () => { useUpload = false; fileName.textContent = ''; fileInput.value = ''; render(); });
+gridSizeInput.addEventListener('change', render);
+cellSizeInput.addEventListener('change', render);
+refreshBtn.addEventListener('click', render);
+
+// ============================================================
+// Init
+// ============================================================
+updatePipelineStep(1);
+render();
+</script>
+</body>
+</html>
