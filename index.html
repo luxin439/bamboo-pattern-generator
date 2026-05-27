@@ -48,10 +48,6 @@
     width: 42px; background: #333; border: 1px solid #555;
     color: #ddd; border-radius: 4px; padding: 2px 4px; font-size: 12px;
   }
-  .ctrl-group select {
-    background: #333; border: 1px solid #555; color: #ddd;
-    border-radius: 4px; padding: 3px 6px; font-size: 12px;
-  }
   .ctrl-group input[type="color"] {
     width: 26px; height: 26px; border: none; border-radius: 4px;
     cursor: pointer; padding: 0; background: none;
@@ -114,7 +110,7 @@
 
 <!-- Pipeline -->
 <div class="pipeline" id="pipelineIndicator">
-  <span class="step" data-step="1">① 上传/预设</span>
+  <span class="step" data-step="1">① 上传图片</span>
   <span class="arrow">→</span>
   <span class="step" data-step="2">② N×N 像素化</span>
   <span class="arrow">→</span>
@@ -132,19 +128,8 @@
   </div>
 
   <div class="ctrl-group">
-    <label>预设</label>
-    <select id="patternSelect">
-      <option value="checkerboard">棋盘格</option>
-      <option value="stripes">横条纹</option>
-      <option value="triangle">三角形</option>
-      <option value="diamond">菱形</option>
-      <option value="random" selected>随机</option>
-    </select>
-  </div>
-
-  <div class="ctrl-group">
     <label>网格</label>
-    <input type="number" id="gridSize" value="24" min="4" max="64" />
+    <input type="number" id="gridSize" value="20" min="4" max="64" />
   </div>
 
   <div class="ctrl-group">
@@ -155,19 +140,19 @@
 
   <div class="ctrl-group">
     <label>格大</label>
-    <input type="number" id="cellSize" value="30" min="10" max="120" />
+    <input type="number" id="cellSize" value="42" min="10" max="120" />
   </div>
 
   <div class="ctrl-group">
     <label>缝隙</label>
-    <input type="range" id="gap" min="0" max="8" value="2" />
-    <span class="val" id="gapVal">2</span>
+    <input type="range" id="gap" min="0" max="8" value="4" />
+    <span class="val" id="gapVal">4</span>
   </div>
 
   <div class="ctrl-group">
     <label>阴影</label>
-    <input type="range" id="shadowIntensity" min="0" max="100" value="50" />
-    <span class="val" id="shadowVal">0.50</span>
+    <input type="range" id="shadowIntensity" min="0" max="100" value="10" />
+    <span class="val" id="shadowVal">0.10</span>
   </div>
 
   <div class="ctrl-group">
@@ -214,7 +199,6 @@ const ctx = canvas.getContext('2d');
 
 const fileInput = document.getElementById('fileInput');
 const fileName = document.getElementById('fileName');
-const patternSelect = document.getElementById('patternSelect');
 const gridSizeInput = document.getElementById('gridSize');
 const thresholdInput = document.getElementById('threshold');
 const thresholdVal = document.getElementById('thresholdVal');
@@ -240,29 +224,6 @@ let currentPattern = null;  // last rendered pattern matrix
 let currentOptions = null;  // last render options
 
 // ============================================================
-// Preset generators
-// ============================================================
-function generatePresetPattern(type, size) {
-  const p = Array.from({ length: size }, () => Array(size).fill(0));
-  for (let i = 0; i < size; i++) {
-    for (let j = 0; j < size; j++) {
-      switch (type) {
-        case 'checkerboard': p[i][j] = (i + j) % 2; break;
-        case 'stripes':      p[i][j] = Math.floor(i / 2) % 2; break;
-        case 'triangle':     p[i][j] = j <= i ? 1 : 0; break;
-        case 'diamond': {
-          const cx = (size - 1) / 2, cy = (size - 1) / 2;
-          p[i][j] = Math.abs(i - cx) + Math.abs(j - cy) < size * 0.4 ? 1 : 0;
-          break;
-        }
-        case 'random':       p[i][j] = Math.random() > 0.5 ? 1 : 0; break;
-      }
-    }
-  }
-  return p;
-}
-
-// ============================================================
 // Render pipeline
 // ============================================================
 function render() {
@@ -274,10 +235,18 @@ function render() {
   const warpColor = warpColorInput.value;
   const weftColor = weftColorInput.value;
 
-  // Step ① & ②: get pattern matrix
-  const pattern = useUpload && uploadedImage
-    ? (updatePipelineStep(2), imageToPatternMatrix(uploadedImage, N, parseInt(thresholdInput.value)))
-    : (updatePipelineStep(1), generatePresetPattern(patternSelect.value, N));
+  // Step ① & ②: get pattern matrix from image or default checkerboard
+  let pattern;
+  if (useUpload && uploadedImage) {
+    updatePipelineStep(2);
+    pattern = imageToPatternMatrix(uploadedImage, N, parseInt(thresholdInput.value));
+  } else {
+    updatePipelineStep(1);
+    // Default alternating pattern so canvas is never blank
+    pattern = Array.from({ length: N }, (_, i) =>
+      Array.from({ length: N }, (_, j) => (i + j) % 2)
+    );
+  }
 
   currentPattern = pattern;
 
@@ -307,7 +276,7 @@ function render() {
   const flat = pattern.flat();
   const ones = flat.filter(v => v === 1).length;
   const zeros = flat.filter(v => v === 0).length;
-  const src = useUpload && uploadedImage ? '📷 上传图片' : `🎨 ${patternSelect.options[patternSelect.selectedIndex].text}`;
+  const src = useUpload && uploadedImage ? '📷 上传图片' : '🎯 默认棋盘';
   stats.innerHTML = `
     <span>${N}×${N} 网格</span><span>${src}</span>
     <span>图案(1): ${ones} 格</span><span>背景(0): ${zeros} 格</span>
@@ -398,7 +367,6 @@ shadowInput.addEventListener('change', scheduleRender);
 textureToggle.addEventListener('change', render);
 warpColorInput.addEventListener('input', render);
 weftColorInput.addEventListener('input', render);
-patternSelect.addEventListener('change', () => { useUpload = false; fileName.textContent = ''; fileInput.value = ''; render(); });
 gridSizeInput.addEventListener('change', render);
 cellSizeInput.addEventListener('change', render);
 refreshBtn.addEventListener('click', render);
