@@ -5,102 +5,142 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>竹编图案生成器 — 空间折叠交织渲染</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
-    background: #1a1a1a; color: #ccc;
-    display: flex; flex-direction: column; align-items: center;
-    padding: 24px 16px 48px;
-    min-height: 100vh;
-  }
-  h1 {
-    font-size: 22px; font-weight: 600; margin-bottom: 2px; color: #e8d5b0;
-    letter-spacing: 1px;
-  }
-  .subtitle { color: #777; font-size: 13px; margin-bottom: 18px; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  background: #1a1a1a; color: #ccc;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px 16px 48px;
+  min-height: 100vh;
+}
+h1 {
+  font-size: 22px; font-weight: 600; margin-bottom: 2px; color: #e8d5b0;
+  letter-spacing: 1px;
+}
+.subtitle { color: #777; font-size: 13px; margin-bottom: 18px; }
 
-  /* ---- Pipeline ---- */
-  .pipeline {
-    display: flex; gap: 8px; align-items: center;
-    margin-bottom: 16px; font-size: 11px; color: #555;
-  }
-  .pipeline .step {
-    padding: 3px 10px; border-radius: 4px; background: #242424;
-    transition: 0.25s;
-  }
-  .pipeline .step.active { background: #3a4a3a; color: #9c9; }
-  .pipeline .arrow { color: #444; }
+/* ---- Pipeline ---- */
+.pipeline {
+  display: flex; gap: 8px; align-items: center;
+  margin-bottom: 16px; font-size: 11px; color: #555;
+}
+.pipeline .step {
+  padding: 3px 10px; border-radius: 4px; background: #242424;
+  transition: 0.25s;
+}
+.pipeline .step.active { background: #3a4a3a; color: #9c9; }
+.pipeline .arrow { color: #444; }
 
-  /* ---- Controls ---- */
-  .controls {
-    background: #242424; border-radius: 12px;
-    padding: 14px 18px; margin-bottom: 18px;
-    display: flex; flex-wrap: wrap; gap: 8px 16px;
-    align-items: center; max-width: 880px; width: 100%;
-  }
-  .ctrl-group {
-    display: flex; align-items: center; gap: 5px;
-    font-size: 12px; color: #aaa;
-  }
-  .ctrl-group label { white-space: nowrap; }
-  .ctrl-group input[type="range"] { width: 72px; vertical-align: middle; }
-  .ctrl-group input[type="number"] {
-    width: 42px; background: #333; border: 1px solid #555;
-    color: #ddd; border-radius: 4px; padding: 2px 4px; font-size: 12px;
-  }
-  .ctrl-group input[type="color"] {
-    width: 26px; height: 26px; border: none; border-radius: 4px;
-    cursor: pointer; padding: 0; background: none;
-  }
-  .val { min-width: 22px; text-align: center; font-size: 11px; color: #888; }
+/* ---- Controls ---- */
+.controls {
+  background: #242424; border-radius: 12px;
+  padding: 14px 18px; margin-bottom: 18px;
+  display: flex; flex-wrap: wrap; gap: 8px 16px;
+  align-items: center; max-width: 1080px; width: 100%;
+}
+.ctrl-group {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: #aaa;
+}
+.ctrl-group label { white-space: nowrap; }
+.ctrl-group input[type="range"] { width: 72px; vertical-align: middle; }
+.ctrl-group input[type="number"] {
+  width: 42px; background: #333; border: 1px solid #555;
+  color: #ddd; border-radius: 4px; padding: 2px 4px; font-size: 12px;
+}
+.ctrl-group input[type="color"] {
+  width: 26px; height: 26px; border: none; border-radius: 4px;
+  cursor: pointer; padding: 0; background: none;
+}
+.val { min-width: 22px; text-align: center; font-size: 11px; color: #888; }
 
-  .upload-area { display: flex; align-items: center; gap: 8px; }
-  .upload-btn {
-    background: #3a3228; border: 1px dashed #8a7a5a;
-    color: #e8d5b0; padding: 4px 12px; border-radius: 6px;
-    cursor: pointer; font-size: 12px; transition: 0.2s;
-  }
-  .upload-btn:hover { background: #4a4238; border-color: #c8b890; }
-  .upload-btn input { display: none; }
-  .file-name { font-size: 11px; color: #666; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upload-area { display: flex; align-items: center; gap: 8px; }
+.upload-btn {
+  background: #3a3228; border: 1px dashed #8a7a5a;
+  color: #e8d5b0; padding: 4px 12px; border-radius: 6px;
+  cursor: pointer; font-size: 12px; transition: 0.2s;
+}
+.upload-btn:hover { background: #4a4238; border-color: #c8b890; }
+.upload-btn input { display: none; }
+.file-name { font-size: 11px; color: #666; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .action-btn {
-    background: #4a6a4a; border: none; color: #fff;
-    padding: 4px 16px; border-radius: 6px; cursor: pointer;
-    font-size: 12px; transition: 0.2s;
-  }
-  .action-btn:hover { background: #5a7a5a; }
-  .action-btn:active { transform: scale(0.97); }
+.action-btn {
+  background: #4a6a4a; border: none; color: #fff;
+  padding: 4px 16px; border-radius: 6px; cursor: pointer;
+  font-size: 12px; transition: 0.2s;
+}
+.action-btn:hover { background: #5a7a5a; }
+.action-btn:active { transform: scale(0.97); }
 
-  /* ---- Canvas ---- */
-  .canvas-wrap {
-    background: #2a2218; padding: 14px; border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-    position: relative;
-  }
-  #weaveCanvas { display: block; border-radius: 6px; cursor: crosshair; }
+/* =============================================================
+   Dual Panel Layout
+   ============================================================= */
+.dual-panel {
+  display: flex; gap: 16px;
+  max-width: 1080px; width: 100%;
+  align-items: flex-start;
+}
 
-  /* ---- Hover status bar ---- */
-  #hoverStatus {
-    height: 28px; line-height: 28px; font-size: 12px; color: #999;
-    margin-top: 8px; text-align: center;
-    background: #242424; border-radius: 6px; padding: 0 14px;
-    min-width: 200px;
-  }
-  #hoverStatus .highlight { color: #e8d5b0; }
+.panel {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+}
 
-  /* ---- Stats ---- */
-  .stats {
-    display: flex; flex-wrap: wrap; gap: 6px 12px;
-    margin-top: 8px; font-size: 11px; color: #666;
-    max-width: 880px; width: 100%;
-  }
-  .stats span { background: #242424; padding: 2px 8px; border-radius: 4px; }
+.panel-header {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: #888; margin-bottom: 8px;
+  padding: 0 2px;
+  letter-spacing: 0.5px;
+}
 
-  @media (max-width: 640px) {
-    .controls { gap: 6px 10px; padding: 10px; }
-    .ctrl-group input[type="range"] { width: 52px; }
-  }
+.panel-header svg {
+  width: 14px; height: 14px;
+  fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
+.panel-left .panel-header { color: #b8a888; }
+.panel-right .panel-header { color: #a8b898; }
+
+/* ---- Canvas Wrap (shared) ---- */
+.canvas-wrap {
+  background: #2a2218; padding: 10px; border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  position: relative;
+}
+
+.panel-right .canvas-wrap {
+  background: #1f1a14;
+}
+
+.canvas-wrap canvas {
+  display: block; border-radius: 6px; cursor: crosshair;
+  width: 100%; height: auto;
+}
+
+/* ---- Hover status bar ---- */
+#hoverStatus {
+  height: 28px; line-height: 28px; font-size: 12px; color: #999;
+  margin-top: 8px; text-align: center;
+  background: #242424; border-radius: 6px; padding: 0 14px;
+  min-width: 200px;
+  max-width: 1080px; width: 100%;
+}
+#hoverStatus .highlight { color: #e8d5b0; }
+
+/* ---- Stats ---- */
+.stats {
+  display: flex; flex-wrap: wrap; gap: 6px 12px;
+  margin-top: 8px; font-size: 11px; color: #666;
+  max-width: 1080px; width: 100%;
+}
+.stats span { background: #242424; padding: 2px 8px; border-radius: 4px; }
+
+@media (max-width: 820px) {
+  .dual-panel { flex-direction: column; }
+  .controls { gap: 6px 10px; padding: 10px; }
+  .ctrl-group input[type="range"] { width: 52px; }
+}
 </style>
 </head>
 <body>
@@ -171,9 +211,41 @@
   <button class="action-btn" id="refreshBtn">⟳ 渲染</button>
 </div>
 
-<!-- Canvas -->
-<div class="canvas-wrap">
-  <canvas id="weaveCanvas"></canvas>
+<!-- ============================================================
+     Dual Panel Canvas Area
+     ============================================================ -->
+<div class="dual-panel">
+  <!-- Left: Logic Weave -->
+  <div class="panel panel-left">
+    <div class="panel-header">
+      <svg viewBox="0 0 24 24">
+        <rect x="4" y="4" width="7" height="7" rx="1"/>
+        <rect x="13" y="4" width="7" height="7" rx="1"/>
+        <rect x="4" y="13" width="7" height="7" rx="1"/>
+        <rect x="13" y="13" width="7" height="7" rx="1"/>
+      </svg>
+      逻辑编织图
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="weaveCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- Right: Physical Simulation -->
+  <div class="panel panel-right">
+    <div class="panel-header">
+      <svg viewBox="0 0 24 24">
+        <path d="M4 4l16 16"/>
+        <path d="M20 4l-16 16"/>
+        <path d="M4 12h16"/>
+        <path d="M12 4v16"/>
+      </svg>
+      实物模拟
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="physicalCanvas"></canvas>
+    </div>
+  </div>
 </div>
 
 <!-- Hover status bar -->
@@ -185,6 +257,7 @@
 <script type="module">
 import {
   renderSimpleWeave,
+  renderPhysicalWeave,
   imageToPatternMatrix,
   loadImageFromFile,
   getCellInfo,
@@ -196,6 +269,8 @@ import {
 // ============================================================
 const canvas = document.getElementById('weaveCanvas');
 const ctx = canvas.getContext('2d');
+const physCanvas = document.getElementById('physicalCanvas');
+const physCtx = physCanvas.getContext('2d');
 
 const fileInput = document.getElementById('fileInput');
 const fileName = document.getElementById('fileName');
@@ -217,11 +292,11 @@ const stats = document.getElementById('stats');
 // ============================================================
 // State
 // ============================================================
-let uploadedImage = null;   // HTMLImageElement | null
+let uploadedImage = null;
 let useUpload = false;
-let snapshot = null;        // ImageData for hover redraw cache
-let currentPattern = null;  // last rendered pattern matrix
-let currentOptions = null;  // last render options
+let snapshot = null;
+let physSnapshot = null;
+let currentPattern = null;
 
 // ============================================================
 // Render pipeline
@@ -235,42 +310,48 @@ function render() {
   const warpColor = warpColorInput.value;
   const weftColor = weftColorInput.value;
 
-  // Step ① & ②: get pattern matrix from image or default checkerboard
+  // Step ① & ②
   let pattern;
   if (useUpload && uploadedImage) {
     updatePipelineStep(2);
     pattern = imageToPatternMatrix(uploadedImage, N, parseInt(thresholdInput.value));
   } else {
     updatePipelineStep(1);
-    // Default alternating pattern so canvas is never blank
     pattern = Array.from({ length: N }, (_, i) =>
       Array.from({ length: N }, (_, j) => (i + j) % 2)
     );
   }
 
   currentPattern = pattern;
-
-  // Step ③: render
   updatePipelineStep(3);
 
-  // Canvas sizing
+  // Canvas sizing (same for both)
   const dpr = window.devicePixelRatio || 1;
   const pw = N * S;
   const ph = N * S;
-  canvas.width = pw * dpr;
-  canvas.height = ph * dpr;
-  canvas.style.width = pw + 'px';
-  canvas.style.height = ph + 'px';
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // Render weave
+  [canvas, physCanvas].forEach(c => {
+    c.width = pw * dpr;
+    c.height = ph * dpr;
+    c.style.width = pw + 'px';
+    c.style.height = ph + 'px';
+  });
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  physCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Left: logic weave with red edge lines
   renderSimpleWeave(ctx, pattern, {
     cellSize: S, gap: G, shadowIntensity: shadow,
     showTexture: texture, warpColor, weftColor,
   });
-
-  // Cache snapshot for hover overlay redraws
   snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  // Right: physical simulation with natural bamboo
+  renderPhysicalWeave(physCtx, pattern, {
+    cellSize: S, gap: G, shadowIntensity: shadow,
+    showTexture: texture,
+  });
+  physSnapshot = physCtx.getImageData(0, 0, physCanvas.width, physCanvas.height);
 
   // Stats
   const flat = pattern.flat();
@@ -286,42 +367,50 @@ function render() {
 }
 
 // ============================================================
-// Hover interaction (模块 C)
+// Hover interaction (shared by both canvases)
 // ============================================================
-canvas.addEventListener('mousemove', (e) => {
+function handleCanvasHover(e, targetCanvas, targetCtx, snap) {
   if (!currentPattern) return;
   const S = parseInt(cellSizeInput.value);
-  const rect = canvas.getBoundingClientRect();
+  const rect = targetCanvas.getBoundingClientRect();
   const col = Math.floor((e.clientX - rect.left) / S);
   const row = Math.floor((e.clientY - rect.top) / S);
   const info = getCellInfo(currentPattern, row, col);
 
   if (!info) {
-    canvas.title = '';
+    targetCanvas.title = '';
     return;
   }
 
-  // Restore cached render from snapshot
-  if (snapshot) {
-    ctx.putImageData(snapshot, 0, 0);
-  }
+  // Restore both canvases from snapshot
+  if (snapshot) ctx.putImageData(snapshot, 0, 0);
+  if (physSnapshot) physCtx.putImageData(physSnapshot, 0, 0);
 
-  // Draw hover overlay
-  drawHoverOverlay(ctx, col, row, S, info);
+  // Draw overlay on target canvas only
+  drawHoverOverlay(targetCtx, col, row, S, info);
 
-  // Update status bar
-  const emoji = info.value === 1 ? '▬' : '▎';
+  const symbol = info.value === 1 ? '▬' : '▎';
   hoverStatus.innerHTML = `
     交叉点 [<span class="highlight">${info.row}</span>, <span class="highlight">${info.col}</span>]
-    &nbsp;→&nbsp; ${emoji} <span class="highlight">${info.label}</span>
+    &nbsp;→&nbsp; ${symbol} <span class="highlight">${info.label}</span>
   `;
-  canvas.title = `[${row},${col}] ${info.label}`;
-});
+  targetCanvas.title = `[${row},${col}] ${info.label}`;
+}
 
+canvas.addEventListener('mousemove', (e) => handleCanvasHover(e, canvas, ctx, snapshot));
 canvas.addEventListener('mouseleave', () => {
   if (snapshot) ctx.putImageData(snapshot, 0, 0);
+  if (physSnapshot) physCtx.putImageData(physSnapshot, 0, 0);
   hoverStatus.innerHTML = '将鼠标移至竹编网格上查看交叉点状态';
   canvas.title = '';
+});
+
+physCanvas.addEventListener('mousemove', (e) => handleCanvasHover(e, physCanvas, physCtx, physSnapshot));
+physCanvas.addEventListener('mouseleave', () => {
+  if (snapshot) ctx.putImageData(snapshot, 0, 0);
+  if (physSnapshot) physCtx.putImageData(physSnapshot, 0, 0);
+  hoverStatus.innerHTML = '将鼠标移至竹编网格上查看交叉点状态';
+  physCanvas.title = '';
 });
 
 // ============================================================
@@ -352,12 +441,10 @@ fileInput.addEventListener('change', async () => {
   }
 });
 
-// Slider value display
 thresholdInput.addEventListener('input', () => { thresholdVal.textContent = thresholdInput.value; });
 gapInput.addEventListener('input', () => { gapVal.textContent = gapInput.value; });
 shadowInput.addEventListener('input', () => { shadowVal.textContent = (parseInt(shadowInput.value) / 100).toFixed(2); });
 
-// Debounced re-render
 let renderTimer;
 function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(render, 80); }
 

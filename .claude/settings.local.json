@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(ui-ux-pro-max)",
+      "Bash(python3 \"C:/Users/luxin/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"bamboo weaving craft dark mode artisan\" --design-system -p \"竹编图案生成器\")"
+    ]
+  }
+}

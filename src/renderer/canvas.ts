@@ -131,6 +131,101 @@ export function renderSimpleWeave(
 }
 
 // ============================================================
+// 实物呈现渲染 — 天然竹篾物理质感
+// ============================================================
+
+export function renderPhysicalWeave(
+  ctx: CanvasRenderingContext2D,
+  pattern: number[][],
+  options: WeaveRenderOptions = {},
+): void {
+  const rows = pattern.length;
+  if (rows === 0) return;
+  const cols = pattern[0]!.length;
+  if (cols === 0) return;
+
+  const S  = options.cellSize ?? 48;
+  const G  = options.gap ?? 2;
+  const SD = options.shadowIntensity ?? 0.5;
+  const TX = options.showTexture ?? true;
+  // 实物模块使用天然竹篾色系，忽略用户颜色选取
+  const WC = '#C4A67A';   // 竹青（竖）
+  const FC = '#D4B896';   // 篾黄（横）
+
+  // 暖色深底
+  ctx.fillStyle = '#15100b';
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  const shadowLen = Math.min(G * 1.5 + 2, 12);
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const v = pattern[r]![c]!;
+      const x = c * S;
+      const y = r * S;
+
+      if (v === 1) {
+        // ── 横条在上 ──
+        ctx.fillStyle = FC;
+        ctx.fillRect(x, y + G / 2, S, S - G);
+
+        // 向外物理阴影（上 / 下）
+        if (SD > 0 && shadowLen > 0) {
+          const a = Math.min(SD * 0.5, 0.4);
+          const gT = ctx.createLinearGradient(x, y + G / 2, x, y + G / 2 - shadowLen);
+          gT.addColorStop(0, `rgba(0,0,0,${a})`);
+          gT.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gT;
+          ctx.fillRect(x, y + G / 2 - shadowLen, S, shadowLen);
+
+          const gB = ctx.createLinearGradient(x, y + S - G / 2, x, y + S - G / 2 + shadowLen);
+          gB.addColorStop(0, `rgba(0,0,0,${a})`);
+          gB.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gB;
+          ctx.fillRect(x, y + S - G / 2, S, shadowLen);
+        }
+
+        // 竹篾横向纤维
+        if (TX) {
+          ctx.fillStyle = 'rgba(160,130,100,0.06)';
+          for (let ly = y + G / 2 + 3; ly < y + S - G / 2 - 2; ly += 2) {
+            ctx.fillRect(x + 2, ly, S - 4, 1);
+          }
+        }
+      } else {
+        // ── 竖条在上 ──
+        ctx.fillStyle = WC;
+        ctx.fillRect(x + G / 2, y, S - G, S);
+
+        // 向外物理阴影（左 / 右）
+        if (SD > 0 && shadowLen > 0) {
+          const a = Math.min(SD * 0.5, 0.4);
+          const gL = ctx.createLinearGradient(x + G / 2, y, x + G / 2 - shadowLen, y);
+          gL.addColorStop(0, `rgba(0,0,0,${a})`);
+          gL.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gL;
+          ctx.fillRect(x + G / 2 - shadowLen, y, shadowLen, S);
+
+          const gR = ctx.createLinearGradient(x + S - G / 2, y, x + S - G / 2 + shadowLen, y);
+          gR.addColorStop(0, `rgba(0,0,0,${a})`);
+          gR.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gR;
+          ctx.fillRect(x + S - G / 2, y, shadowLen, S);
+        }
+
+        // 竹篾纵向纤维
+        if (TX) {
+          ctx.fillStyle = 'rgba(140,110,80,0.06)';
+          for (let lx = x + G / 2 + 3; lx < x + S - G / 2 - 2; lx += 2) {
+            ctx.fillRect(lx, y + 2, 1, S - 4);
+          }
+        }
+      }
+    }
+  }
+}
+
+// ============================================================
 // 悬停交互
 // ============================================================
 
