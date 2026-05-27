@@ -5,7 +5,7 @@
   "description": "竹编图案生成器 — 核心数据结构与编织算法",
   "main": "src/index.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "vite build",
     "check": "tsc --noEmit"
   },
   "devDependencies": {
